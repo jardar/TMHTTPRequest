@@ -37,6 +37,7 @@
 @property (copy) TMHTTPBasicBlock    startedBlock;
 @property (copy) TMHTTPSuccessBlock  completedBlock;
 @property (copy) TMHTTPFailureBlock  failedBlock;
+@property (copy) TMHTTPBasicBlock    cancelledBlock;
 
 @property (copy) TMHTTPProgressBlock uploadProgressBlock;
 @property (copy) TMHTTPProgressBlock downloadProgressBlock;

@@ -37,6 +37,7 @@
 @synthesize startedBlock            = _startedBlock;
 @synthesize completedBlock          = _completedBlock;
 @synthesize failedBlock             = _failedBlock;
+@synthesize cancelledBlock;
 
 @synthesize uploadProgressBlock     = _uploadProgressBlock;
 @synthesize downloadProgressBlock   = _downloadProgressBlock;
@@ -56,8 +57,6 @@
     self = [super init];
     if(self)
     {
-        NSLog(@"initWithURL: %@", url);
-        
         request = [NSMutableURLRequest requestWithURL:url];
         [request setHTTPMethod:@"POST"];
         [request setHTTPShouldHandleCookies:YES];
@@ -258,6 +257,12 @@
     
     [connection setDelegateQueue:[NSOperationQueue currentQueue]];
     [connection start];
+    
+    if(self.startedBlock)
+    {
+        self.startedBlock();
+    }
+    
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate distantFuture]];
 }
 
@@ -271,11 +276,21 @@
 -(void)cancelRequest
 {
     [connection cancel];
+
+    if(self.cancelledBlock)
+    {
+        self.cancelledBlock();
+    }
+
+    if(self.networkTask != UIBackgroundTaskInvalid)
+    {
+        [[UIApplication sharedApplication] endBackgroundTask:self.networkTask];
+        self.networkTask = UIBackgroundTaskInvalid;
+    }
 }
 
 -(void)clearDelegatesAndCancelRequest
 {
-    // TODO: clear blocks and delegates and shit!
     self.startedBlock           = nil;
     self.completedBlock         = nil;
     self.failedBlock            = nil;
@@ -284,7 +299,7 @@
     self.downloadProgressBlock  = nil;
     
     [connection cancel];
-    
+
     if(self.networkTask != UIBackgroundTaskInvalid)
     {
         [[UIApplication sharedApplication] endBackgroundTask:self.networkTask];

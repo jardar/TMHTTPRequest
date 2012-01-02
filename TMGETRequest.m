@@ -36,6 +36,7 @@
 @synthesize startedBlock            = _startedBlock;
 @synthesize completedBlock          = _completedBlock;
 @synthesize failedBlock             = _failedBlock;
+@synthesize cancelledBlock;
 
 @synthesize downloadProgressBlock   = _downloadProgressBlock;
 
@@ -85,7 +86,7 @@
 
 -(NSString*)encodeURL:(NSString *)string
 {
-	NSString *newString = (__bridge NSString *)
+	NSString *newString = (__bridge_transfer NSString *)
     CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault, 
                                             (__bridge CFStringRef)string, 
                                             NULL, 
@@ -115,18 +116,18 @@
         NSMutableString * paramString = [NSMutableString stringWithString:@"?"];
         for(NSString *key in params) 
         {
-            [paramString appendFormat:@"%@=%@&", key, [params objectForKey:key]];
+            //TODO: encode this shit eh?
+            id temp = [params objectForKey:key];
+            NSString * strParam = [NSString stringWithFormat:@"%@", temp];
+            
+            [paramString appendFormat:@"%@=%@&", key, [self encodeURL:strParam]];
         }
         NSString * urlstring = [[self.baseurl absoluteString] stringByAppendingString:paramString];
-        
-        NSLog(@"urlstring = %@, params = %@", urlstring, paramString);
         
         if([urlstring hasSuffix:@"&"])
             urlstring = [urlstring substringToIndex:urlstring.length-1];
         realURL = [NSURL URLWithString:urlstring];
     }
-    
-    NSLog(@"realURL = %@", realURL);
     
     request = [NSMutableURLRequest requestWithURL:realURL];
     urlconnection = [[NSURLConnection alloc] initWithRequest:request 
@@ -135,6 +136,10 @@
     
     [urlconnection setDelegateQueue:[NSOperationQueue currentQueue]];
     [urlconnection start];
+    if(self.startedBlock)
+    {
+        self.startedBlock();
+    }
     
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate distantFuture]];
 }
@@ -149,7 +154,12 @@
 -(void)cancelRequest
 {
     [urlconnection cancel];
-    
+
+    if(self.cancelledBlock)
+    {
+        self.cancelledBlock();
+    }
+   
     if(self.networkTask != UIBackgroundTaskInvalid)
     {
         [[UIApplication sharedApplication] endBackgroundTask:self.networkTask];
@@ -159,7 +169,6 @@
 
 -(void)clearDelegatesAndCancelRequest
 {
-    // TODO: clear blocks and delegates and shit!
     self.startedBlock           = nil;
     self.completedBlock         = nil;
     self.failedBlock            = nil;
@@ -229,6 +238,8 @@
 {
     NSHTTPURLResponse * httpResponse = (NSHTTPURLResponse *)response;
     self.response = httpResponse;
+    
+   // DLog(@"headers = %@", httpResponse.allHeaderFields);
 }
 
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
